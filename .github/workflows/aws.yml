@@ -24,9 +24,12 @@ jobs:
 
     - name: Restore dependencies
       run: dotnet restore
+      working-directory: ./Abdullahi_Elmi  # Replace with the correct relative path
 
     - name: Build
       run: dotnet build --no-restore
+      working-directory: ./Abdullahi_Elmi  # Replace with the correct relative path
 
     - name: Run tests
       run: dotnet test --no-build --verbosity normal
+      working-directory: ./Abdullahi_Elmi  # Replace with the correct relative path
