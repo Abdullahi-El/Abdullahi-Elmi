@@ -1,24 +1,32 @@
-deploy:
-  runs-on: ubuntu-latest
-  needs: build
-  steps:
-  - uses: actions/checkout@v2
+name: Build and Test
 
-  - name: Setup .NET
-    uses: actions/setup-dotnet@v1
-    with:
-      dotnet-version: '6.0.x'
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
 
-  - name: Publish
-    run: dotnet publish -c Release -o ./publish
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-  - name: Deploy to AWS Elastic Beanstalk
-    uses: einaregilsson/beanstalk-deploy@v18
-    with:
-      aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
-      aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
-      application_name: your-app-name
-      environment_name: your-env-name
-      version_label: ${{ github.sha }}
-      region: your-region
-      deployment_package: ./publish
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '6.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --no-restore
+
+    - name: Run tests
+      run: dotnet test --no-build --verbosity normal
