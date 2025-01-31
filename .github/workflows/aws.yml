@@ -1,35 +1,57 @@
-
-name: Deploy To aws
-
+name: Deploy to AWS Elastic Beanstalk
 
 on:
-  
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  deploy:
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x' # Change this to match your .NET version
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build application
+        run: dotnet publish -c Release -o publish_output
+
+      - name: Install AWS CLI
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          sudo apt update
+          sudo apt install -y unzip
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          aws --version
+
+      - name: Install Elastic Beanstalk CLI
+        run: |
+          pip install awsebcli --upgrade --user
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          eb --version
+
+      - name: Zip the application
+        run: zip -r deploy-package.zip publish_output/
+
+      - name: Deploy to AWS Elastic Beanstalk
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "us-east-1" # Change to your AWS region
+          EB_ENV_NAME: "Individuell-env" # Change this to your Elastic Beanstalk environment name
+          EB_APP_NAME: "individuell" # Change this to your Elastic Beanstalk application name
+        run: |
+          eb init $EB_APP_NAME --region $AWS_REGION --platform "dotnet"
+          eb use $EB_ENV_NAME
+          eb deploy
